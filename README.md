@@ -1,3 +1,3 @@
-# fashion_store
+# Fashion Store
 
-A new Flutter project.
+A modern fashion store application built with Flutter and Firebase.
