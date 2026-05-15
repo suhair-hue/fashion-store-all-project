@@ -1,0 +1,1 @@
+# fashion_store_full_project
