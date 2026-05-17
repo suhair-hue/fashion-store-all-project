@@ -5,6 +5,7 @@ import '../models/product.dart';
 import '../utils/app_theme.dart';
 import '../utils/cart_provider.dart';
 import '../widgets/custom_button.dart';
+import 'cart_screen.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Product product;
@@ -36,6 +37,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
       cart.addToCart(p, _size!, _color!);
     }
     _showSnack('Added to cart!', success: true);
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const CartScreen(standalone: true)),
+    );
   }
 
   void _showSnack(String msg, {bool success = false}) {

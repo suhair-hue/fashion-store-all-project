@@ -217,6 +217,19 @@ class _HomeTabState extends State<_HomeTab> {
   bool _isSearching = false;
   List<Product> _searchResults = [];
 
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) {
+      return 'Good Morning 👋';
+    } else if (hour >= 12 && hour < 17) {
+      return 'Good Afternoon 👋';
+    } else if (hour >= 17 && hour < 22) {
+      return 'Good Evening 👋';
+    } else {
+      return 'Good Night 👋';
+    }
+  }
+
   void _onSearch(String q) => setState(() {
         _isSearching = q.isNotEmpty;
         _searchResults = DummyData.search(q);
@@ -260,17 +273,24 @@ class _HomeTabState extends State<_HomeTab> {
                       ),
                     ),
                     const SizedBox(width: 12),
-                    const Column(
+                    Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Good Morning 👋',
-                            style: TextStyle(
-                                fontSize: 12, color: AppColors.textSecondary)),
-                        Text('Find your style',
-                            style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.primary)),
+                        Text(
+                          _getGreeting(),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const Text(
+                          'Find your style',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ],
                     ),
                     const Spacer(),
@@ -625,7 +645,7 @@ class _Banner extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'New Summer\nCollection 2025',
+                      'New Summer\nCollection 2026',
                       style: TextStyle(
                           color: Colors.white,
                           fontSize: 22,

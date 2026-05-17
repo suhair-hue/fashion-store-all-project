@@ -61,12 +61,22 @@ class AuthService {
   Future<void> updateProfile({
     required String name,
     required String phone,
+    String? profileImageBase64,
   }) async {
-    if (currentUser == null) return;
-    await _db.collection('users').doc(currentUser!.uid).update({
+    final user = currentUser;
+    if (user == null) return;
+
+    final Map<String, dynamic> updateData = {
       'name': name,
       'phone': phone,
-    });
-    await currentUser!.updateDisplayName(name);
+    };
+
+    if (profileImageBase64 != null) {
+      updateData['profileImage'] = profileImageBase64;
+    }
+
+    await _db.collection('users').doc(user.uid).set(updateData, SetOptions(merge: true));
+    await user.updateDisplayName(name);
+    await user.reload();
   }
 }

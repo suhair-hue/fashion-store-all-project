@@ -6,7 +6,32 @@ class OrderService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  String get _uid => _auth.currentUser!.uid;
+  String get _uid => _auth.currentUser?.uid ?? '';
+
+  // ─── Get Orders Stream ─────────────────────────────────────────────────────
+  /// Returns a real-time stream of all orders placed by the current authenticated user,
+  /// sorted by creation time descending.
+  Stream<QuerySnapshot<Map<String, dynamic>>> getOrdersStream() {
+    if (_uid.isEmpty) {
+      return const Stream.empty();
+    }
+    return _db
+        .collection('orders')
+        .where('userId', isEqualTo: _uid)
+        .snapshots();
+  }
+
+  // ─── Cancel Order ──────────────────────────────────────────────────────────
+  /// Updates the order document to a "Cancelled" status with audit timestamps
+  /// and cancellation reason.
+  Future<void> cancelOrder(String orderId, String reason) async {
+    await _db.collection('orders').doc(orderId).update({
+      'status': 'Cancelled',
+      'cancelledAt': FieldValue.serverTimestamp(),
+      'cancellationReason': reason,
+      'paymentStatus': 'refunded_pending', // Standard audit state update
+    });
+  }
 
   // ─── Place Order → saves to Firebase Firestore ────────────────────────────
   Future<String> placeOrder({
@@ -51,8 +76,10 @@ class OrderService {
       'subtotal':      subtotal,
       'shipping':      shipping,
       'total':         total,
-      'status':        'Processing',
+      'status':        'Order Placed', // Realigned to standard 'Order Placed' status
       'createdAt':     FieldValue.serverTimestamp(),
+      'cancelledAt':   null,
+      'cancellationReason': null,
     };
 
     await orderRef.set(orderData);

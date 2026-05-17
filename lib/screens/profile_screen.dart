@@ -1,4 +1,8 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../utils/app_theme.dart';
 import '../widgets/custom_button.dart';
 import '../services/auth_service.dart';
@@ -19,6 +23,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _saving = false;
   bool _loading = true;
   Map<String, dynamic>? _profile;
+  String? _selectedImageBase64;
 
   @override
   void initState() {
@@ -57,18 +62,93 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
+  Future<void> _pickImage() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => Container(
+          decoration: const BoxDecoration(
+            color: AppColors.background,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                "Select Profile Picture",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: AppColors.accent),
+                title: const Text("Choose from Gallery", style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined, color: AppColors.accent),
+                title: const Text("Take a Photo", style: TextStyle(fontWeight: FontWeight.bold)),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        ),
+      );
+
+      if (source == null) return;
+
+      final XFile? pickedFile = await picker.pickImage(
+        source: source,
+        maxWidth: 200,
+        maxHeight: 200,
+        imageQuality: 80,
+      );
+
+      if (pickedFile == null) return;
+
+      final File file = File(pickedFile.path);
+      final Uint8List bytes = await file.readAsBytes();
+      
+      setState(() {
+        _selectedImageBase64 = base64Encode(bytes);
+      });
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("Failed to pick image: $e"),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   Future<void> _saveProfile() async {
     setState(() => _saving = true);
     try {
       await _authService.updateProfile(
         name: _nameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
+        profileImageBase64: _selectedImageBase64,
       );
       if (!mounted) return;
       setState(() {
         _editing = false;
         _profile?['name'] = _nameCtrl.text.trim();
         _profile?['phone'] = _phoneCtrl.text.trim();
+        if (_selectedImageBase64 != null) {
+          _profile?['profileImage'] = _selectedImageBase64;
+        }
+        _selectedImageBase64 = null;
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -150,6 +230,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextButton(
               onPressed: () => setState(() {
                 _editing = false;
+                _selectedImageBase64 = null;
                 _nameCtrl.text = _profile?['name'] ?? '';
                 _phoneCtrl.text = _profile?['phone'] ?? '';
               }),
@@ -163,28 +244,73 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: Column(
           children: [
             // ── Avatar ──────────────────────────────────────────────────
-            Center(
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: AppColors.gradientAccent,
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                        color: AppColors.accent.withOpacity(0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8))
+            GestureDetector(
+              onTap: _editing ? _pickImage : null,
+              child: Center(
+                child: Stack(
+                  children: [
+                    Container(
+                      width: 100,
+                      height: 100,
+                      decoration: BoxDecoration(
+                        gradient: (_selectedImageBase64 == null && (_profile?['profileImage']?.toString().isNotEmpty != true))
+                            ? AppColors.gradientAccent
+                            : null,
+                        color: (_selectedImageBase64 != null || (_profile?['profileImage']?.toString().isNotEmpty == true))
+                            ? AppColors.surface
+                            : null,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: AppColors.accent, width: 3),
+                        image: (_selectedImageBase64 != null)
+                            ? DecorationImage(
+                                image: MemoryImage(base64Decode(_selectedImageBase64!)),
+                                fit: BoxFit.cover,
+                              )
+                            : (_profile?['profileImage']?.toString().isNotEmpty == true)
+                                ? DecorationImage(
+                                    image: MemoryImage(base64Decode(_profile!['profileImage'])),
+                                    fit: BoxFit.cover,
+                                  )
+                                : null,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accent.withOpacity(0.2),
+                            blurRadius: 20,
+                            offset: const Offset(0, 8),
+                          )
+                        ],
+                      ),
+                      child: (_selectedImageBase64 == null && (_profile?['profileImage']?.toString().isNotEmpty != true))
+                          ? Center(
+                              child: Text(
+                                firstLetter,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 36,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            )
+                          : null,
+                    ),
+                    if (_editing)
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: AppColors.accent,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                      ),
                   ],
-                ),
-                child: Center(
-                  child: Text(
-                    firstLetter,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 36,
-                        fontWeight: FontWeight.w900),
-                  ),
                 ),
               ),
             ),
