@@ -52,3 +52,10 @@ scratch/
 
 # Kotlin compiler/IDE files
 .kotlin/
+
+# Gradle & Android build output ignores
+.gradle/
+/android/build/
+/android/app/build/
+*.hprof
+*.hprof.xml
